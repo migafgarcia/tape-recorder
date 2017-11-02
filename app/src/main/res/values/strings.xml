@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Tape Recorder</string>
+    <string name="action_start">Start recording</string>
+    <string name="action_stop">Stop recording</string>
+    <string name="status_recording">Recording...</string>
+    <string name="status_stopped">Not Recording</string>
+    <string name="service_ticker_text">This is the ticker text</string>
+    <string name="record_service_name">Record Service</string>
+
+</resources>
