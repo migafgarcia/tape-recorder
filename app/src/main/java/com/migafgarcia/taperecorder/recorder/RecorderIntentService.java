@@ -124,15 +124,15 @@ public class RecorderIntentService extends IntentService {
     private Notification buildNotification() {
         Notification.Builder builder = new Notification.Builder(RecorderIntentService.this);
         builder.setAutoCancel(false);
-        builder.setTicker("Recording...");
-        builder.setContentTitle("Title");
-        builder.setContentText("Context text");
+        builder.setTicker(getString(R.string.status_recording));
+        builder.setContentTitle(getString(R.string.status_recording));
+        builder.setContentText(getString(R.string.context_text));
         builder.setSmallIcon(R.mipmap.ic_launcher);
         Intent notificationIntent = new Intent(this, RecorderActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         builder.setContentIntent(pendingIntent);
         builder.setOngoing(true);
-        builder.setSubText("This is subtext...");
+        builder.setSubText(getString(R.string.subtext));
         return builder.build();
     }
 

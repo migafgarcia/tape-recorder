@@ -77,6 +77,12 @@ public class RecorderActivity extends AppCompatActivity {
         sendBroadcast(i);
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(receiver);
+    }
+
     private class RecorderActivityReceiver extends BroadcastReceiver {
 
         @Override
