@@ -18,6 +18,12 @@ import com.migafgarcia.taperecorder.RecorderActivity;
 
 import java.io.IOException;
 
+import static android.media.MediaRecorder.MEDIA_ERROR_SERVER_DIED;
+import static android.media.MediaRecorder.MEDIA_RECORDER_ERROR_UNKNOWN;
+import static android.media.MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED;
+import static android.media.MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED;
+import static android.media.MediaRecorder.MEDIA_RECORDER_INFO_UNKNOWN;
+
 /**
  * An {@link IntentService} subclass for handling asynchronous task requests in
  * a service on a separate handler thread.
@@ -46,7 +52,9 @@ public class RecorderIntentService extends IntentService {
     public final static int STATUS_NOT_RECORDING = 0;
     public final static int STATUS_RECORDING = 1;
 
-    private RecorderThread recorderThread;
+    private MediaRecorder.OnInfoListener onInfoListener;
+    private MediaRecorder.OnErrorListener onErrorListener;
+
 
     public RecorderIntentService() {
         super("RecorderIntentService");
@@ -58,6 +66,36 @@ public class RecorderIntentService extends IntentService {
         mediaRecorder = new MediaRecorder();
         status = STATUS_NOT_RECORDING;
         receiver = new RecorderBroadcastReceiver();
+        onInfoListener = new MediaRecorder.OnInfoListener() {
+            @Override
+            public void onInfo(MediaRecorder mediaRecorder, int info, int extra) {
+                switch (info) {
+                    case MEDIA_RECORDER_INFO_UNKNOWN:
+                        Log.d(TAG, "MEDIA_RECORDER_INFO_UNKNOWN");
+                        break;
+                    case MEDIA_RECORDER_INFO_MAX_DURATION_REACHED:
+                        Log.d(TAG, "MEDIA_RECORDER_INFO_MAX_DURATION_REACHED");
+                        break;
+                    case MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED:
+                        Log.d(TAG, "MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED");
+                        break;
+                }
+            }
+        };
+
+        onErrorListener = new MediaRecorder.OnErrorListener() {
+            @Override
+            public void onError(MediaRecorder mediaRecorder, int error, int extra) {
+                switch(error) {
+                    case MEDIA_RECORDER_ERROR_UNKNOWN:
+                        Log.d(TAG, "MEDIA_RECORDER_ERROR_UNKNOWN");
+                        break;
+                    case MEDIA_ERROR_SERVER_DIED:
+                        Log.d(TAG, "MEDIA_ERROR_SERVER_DIED");
+                        break;
+                }
+            }
+        };
     }
 
     @Override
@@ -99,8 +137,17 @@ public class RecorderIntentService extends IntentService {
     }
 
     public void startRecording() {
-        recorderThread = new RecorderThread();
-        recorderThread.start();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setOutputFile(Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + System.currentTimeMillis() + ".mp3");
+        try {
+            mediaRecorder.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e(TAG, e.toString());
+        }
+        mediaRecorder.start();
         status = STATUS_RECORDING;
         Log.d(TAG, "Recording");
         notificationManager.notify(NOTIFICATION_ID, buildNotification());
@@ -108,8 +155,8 @@ public class RecorderIntentService extends IntentService {
     }
 
     public void stopRecording() {
-
-        recorderThread.interrupt();
+        mediaRecorder.stop();
+        mediaRecorder.reset();
         status = STATUS_NOT_RECORDING;
         Log.d(TAG, "Stopped Recording");
         notificationManager.cancel(NOTIFICATION_ID);
@@ -144,39 +191,4 @@ public class RecorderIntentService extends IntentService {
     }
 
 
-
-    private class RecorderThread extends Thread {
-
-        @Override
-        public void run() {
-            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            mediaRecorder.setOutputFile(Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + System.currentTimeMillis() + ".mp3");
-            try {
-                mediaRecorder.prepare();
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.e(TAG, e.toString());
-            }
-            mediaRecorder.start();
-
-            while(true) {
-                if (Thread.interrupted()) {
-                    mediaRecorder.stop();
-                    mediaRecorder.reset();
-                    return;
-                }
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    Log.e(TAG, "Sleep failed");
-                }
-            }
-
-        }
-
-
-    }
 }

@@ -65,15 +65,9 @@ public class RecorderActivity extends AppCompatActivity {
         intentFilter.addAction(ACTION_STATUS_RESPONSE);
         registerReceiver(receiver, intentFilter);
 
-
         Intent i = new Intent();
         i.setAction(ACTION_STATUS_REQUEST);
         sendBroadcast(i);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
     }
 
     @OnClick(R.id.record_btn)
