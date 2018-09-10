@@ -6,7 +6,10 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -20,10 +23,15 @@ public class RecorderActivity extends AppCompatActivity {
 
     private static final String TAG = RecorderActivity.class.getName();
 
-    @BindView(R.id.status_txtview)
-    TextView statusTxtView;
     @BindView(R.id.record_btn)
-    Button recordBtn;
+    FloatingActionButton recordBtn;
+
+    @BindView(R.id.recordings_rv)
+    private RecyclerView recyclerView;
+
+    private RecyclerView.Adapter adapter;
+    private RecyclerView.LayoutManager layoutManager;
+
 
     private RecorderService mService;
     private boolean mBound = false;
@@ -52,6 +60,22 @@ public class RecorderActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recorder);
         ButterKnife.bind(this);
+
+        recyclerView.setHasFixedSize(true);
+
+        // use a linear layout manager
+        layoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(layoutManager);
+
+        // specify an adapter (see also next example)
+//        adapter = new MyAdapter(myDataset);
+//        recyclerView.setAdapter(mAdapter);
+
+        // TODO: 10-09-2018
+
+        
+
+
     }
 
     @Override
@@ -64,15 +88,10 @@ public class RecorderActivity extends AppCompatActivity {
     private void updateUI() {
         RecorderStatus status = mService.getStatus();
         if(status == RecorderStatus.NOT_RECORDING) {
-            recordBtn.setText(R.string.action_start);
-            statusTxtView.setText(R.string.status_stopped);
+            recordBtn.setImageResource(R.drawable.ic_mic_black_24dp);
         }
         else if(status == RecorderStatus.RECORDING){
-            recordBtn.setText(R.string.action_stop);
-            statusTxtView.setText(R.string.status_recording);
-        }
-        else {
-            Toast.makeText(this, "Unknown status", Toast.LENGTH_SHORT).show();
+            recordBtn.setImageResource(R.drawable.ic_mic_off_black_24dp);
         }
     }
 

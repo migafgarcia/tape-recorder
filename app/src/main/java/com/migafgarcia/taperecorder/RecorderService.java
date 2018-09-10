@@ -28,7 +28,6 @@ import static android.media.MediaRecorder.MEDIA_RECORDER_INFO_UNKNOWN;
 public class RecorderService extends Service {
     private final static String TAG = RecorderService.class.getName();
     private final static int NOTIFICATION_ID = 666;
-    private final static String RECORDING_STATUS = "RECORDING_STATUS";
 
     private final IBinder binder = new RecorderServiceBinder();
 
@@ -77,7 +76,7 @@ public class RecorderService extends Service {
         onErrorListener = new MediaRecorder.OnErrorListener() {
             @Override
             public void onError(MediaRecorder mediaRecorder, int error, int extra) {
-                switch(error) {
+                switch (error) {
                     case MEDIA_RECORDER_ERROR_UNKNOWN:
                         Log.d(TAG, "MEDIA_RECORDER_ERROR_UNKNOWN");
                         break;
@@ -87,14 +86,12 @@ public class RecorderService extends Service {
                 }
             }
         };
-
     }
 
     @Override
     public void onDestroy() {
-        if(currentStatus == RecorderStatus.RECORDING)
+        if (currentStatus == RecorderStatus.RECORDING)
             stopRecording();
-
         super.onDestroy();
     }
 
@@ -122,7 +119,7 @@ public class RecorderService extends Service {
     private String newFile() {
         File trDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), "Tape Recorder");
 
-        if(!trDir.exists() && !trDir.mkdirs()) {
+        if (!trDir.exists() && !trDir.mkdirs()) {
             Toast.makeText(this, "Error creating Tape Recorder directory", Toast.LENGTH_LONG).show();
             Log.d(TAG, "Error creating Tape Recorder directory:" + trDir.getAbsolutePath());
             // TODO: 10-09-2018 handle this
@@ -165,10 +162,9 @@ public class RecorderService extends Service {
     }
 
     public void record() {
-        if(currentStatus == RecorderStatus.RECORDING) {
+        if (currentStatus == RecorderStatus.RECORDING) {
             stopRecording();
-        }
-        else {
+        } else {
             startRecording();
         }
     }
