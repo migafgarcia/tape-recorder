@@ -21,8 +21,6 @@
             </intent-filter>
         </activity>
 
-        <service
-            android:name=".recorder.RecorderIntentService"/>
     </application>
 
 </manifest>
