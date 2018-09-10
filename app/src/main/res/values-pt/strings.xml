@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tape Recorder</string>
+    <string name="action_start">Iniciar gravação</string>
+    <string name="action_stop">Parar gravação</string>
+    <string name="status_recording">A gravar…</string>
+    <string name="status_stopped">Parado</string>
+</resources>

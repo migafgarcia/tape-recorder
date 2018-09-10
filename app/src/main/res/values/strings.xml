@@ -1,10 +1,9 @@
 <resources>
-    <string name="app_name">Tape Recorder</string>
+    <string name="app_name" translatable="false">Tape Recorder</string>
     <string name="action_start">Start recording</string>
     <string name="action_stop">Stop recording</string>
-    <string name="status_recording">Recording...</string>
+    <string name="status_recording">Recording…</string>
     <string name="status_stopped">Not Recording</string>
-    <string name="context_text">Tape Recorder is now recording</string>
-    <string name="subtext">Reopen Tape Recorder to stop</string>
+    <string name="context_text" translatable="false">Tape Recorder is now recording</string>
 
 </resources>
