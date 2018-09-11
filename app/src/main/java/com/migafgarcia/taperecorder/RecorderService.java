@@ -3,7 +3,9 @@ package com.migafgarcia.taperecorder;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.arch.persistence.room.Room;
 import android.content.Intent;
+import android.icu.text.AlphabeticIndex;
 import android.media.MediaRecorder;
 import android.os.Binder;
 import android.os.Build;
@@ -15,8 +17,18 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.migafgarcia.taperecorder.models.Recording;
+
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.IOException;
+
+import io.reactivex.Completable;
+import io.reactivex.CompletableObserver;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
+import io.reactivex.schedulers.Schedulers;
 
 import static android.media.MediaRecorder.MEDIA_ERROR_SERVER_DIED;
 import static android.media.MediaRecorder.MEDIA_RECORDER_ERROR_UNKNOWN;
@@ -41,6 +53,8 @@ public class RecorderService extends Service {
     private NotificationManagerCompat notificationManagerCompat;
     private MediaRecorder.OnInfoListener onInfoListener;
     private MediaRecorder.OnErrorListener onErrorListener;
+
+    private AppDatabase db;
 
 
     @Override
@@ -86,6 +100,9 @@ public class RecorderService extends Service {
                 }
             }
         };
+
+        db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "tape-recorder-db").build();
+
     }
 
     @Override
@@ -116,7 +133,7 @@ public class RecorderService extends Service {
     }
 
 
-    private String newFile() {
+    private Recording newFile() {
         File trDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), "Tape Recorder");
 
         if (!trDir.exists() && !trDir.mkdirs()) {
@@ -125,16 +142,20 @@ public class RecorderService extends Service {
             // TODO: 10-09-2018 handle this
         }
 
-        File outputFile = new File(trDir.getAbsolutePath(), "tr-" + System.currentTimeMillis() + ".mp3");
+        String title = "tr-" + System.currentTimeMillis() + ".mp3";
 
-        return outputFile.getAbsolutePath();
+        File outputFile = new File(trDir.getAbsolutePath(), title);
+
+        return Recording.newBuilder().setTitle(title).setPath(outputFile.getAbsolutePath()).build();
     }
 
     private void startRecording() {
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        mediaRecorder.setOutputFile(newFile());
+        Recording recording = newFile();
+        addRecording(recording);
+        mediaRecorder.setOutputFile(recording.getPath());
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
@@ -154,7 +175,6 @@ public class RecorderService extends Service {
         currentStatus = RecorderStatus.NOT_RECORDING;
         Log.d(TAG, "Stopped Recording");
         notificationManagerCompat.cancel(NOTIFICATION_ID);
-
     }
 
     public RecorderStatus getStatus() {
@@ -173,6 +193,26 @@ public class RecorderService extends Service {
         RecorderService getService() {
             return RecorderService.this;
         }
+    }
+
+    private void addRecording(Recording recording) {
+        Completable.fromAction(() -> db.recordingDao().insertAll(recording))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io()).subscribe(new CompletableObserver() {
+            @Override
+            public void onSubscribe(Disposable d) {
+            }
+
+            @Override
+            public void onComplete() {
+                Log.d(TAG, "Recording " + recording.getTitle() + " added to database");
+            }
+
+            @Override
+            public void onError(Throwable e) {
+
+            }
+        });
     }
 
 }
