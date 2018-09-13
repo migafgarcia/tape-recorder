@@ -125,4 +125,16 @@ public class Recording {
             return new Recording(this);
         }
     }
+
+    @Override
+    public String toString() {
+        return "Recording{" +
+                "uid=" + uid +
+                ", title='" + title + '\'' +
+                ", path='" + path + '\'' +
+                ", size=" + size +
+                ", duration=" + duration +
+                ", timestamp=" + timestamp +
+                '}';
+    }
 }

@@ -5,12 +5,13 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.arch.persistence.room.Room;
 import android.content.Intent;
-import android.icu.text.AlphabeticIndex;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
@@ -20,14 +21,13 @@ import android.widget.Toast;
 import com.migafgarcia.taperecorder.models.Recording;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.IOException;
+import java.util.Objects;
 
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Action;
 import io.reactivex.schedulers.Schedulers;
 
 import static android.media.MediaRecorder.MEDIA_ERROR_SERVER_DIED;
@@ -55,6 +55,8 @@ public class RecorderService extends Service {
     private MediaRecorder.OnErrorListener onErrorListener;
 
     private AppDatabase db;
+
+    private Recording currentRecording = null;
 
 
     @Override
@@ -133,7 +135,7 @@ public class RecorderService extends Service {
     }
 
 
-    private Recording newFile() {
+    private Recording generateRecording() {
         File trDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), "Tape Recorder");
 
         if (!trDir.exists() && !trDir.mkdirs()) {
@@ -153,9 +155,8 @@ public class RecorderService extends Service {
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        Recording recording = newFile();
-        addRecording(recording);
-        mediaRecorder.setOutputFile(recording.getPath());
+        currentRecording = generateRecording();
+        mediaRecorder.setOutputFile(currentRecording.getPath());
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
@@ -175,6 +176,8 @@ public class RecorderService extends Service {
         currentStatus = RecorderStatus.NOT_RECORDING;
         Log.d(TAG, "Stopped Recording");
         notificationManagerCompat.cancel(NOTIFICATION_ID);
+        addRecording(currentRecording);
+        currentRecording = null;
     }
 
     public RecorderStatus getStatus() {
@@ -195,7 +198,19 @@ public class RecorderService extends Service {
         }
     }
 
-    private void addRecording(Recording recording) {
+    private void addRecording(@NonNull Recording recording) {
+
+        Objects.requireNonNull(recording);
+
+        File file = new File(recording.getPath());
+        MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
+        mediaMetadataRetriever.setDataSource(recording.getPath());
+        String durationStr = mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+        long duration = Long.parseLong(durationStr);
+
+        recording.setSize(file.length());
+        recording.setDuration(duration);
+
         Completable.fromAction(() -> db.recordingDao().insertAll(recording))
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io()).subscribe(new CompletableObserver() {
@@ -205,7 +220,7 @@ public class RecorderService extends Service {
 
             @Override
             public void onComplete() {
-                Log.d(TAG, "Recording " + recording.getTitle() + " added to database");
+                Log.d(TAG, "Recording " + recording + " added to database");
             }
 
             @Override

@@ -13,7 +13,12 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 
+import com.birbit.android.jobqueue.JobManager;
+import com.birbit.android.jobqueue.config.Configuration;
 import com.migafgarcia.taperecorder.models.Recording;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,9 +26,17 @@ import java.util.List;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import io.reactivex.FlowableEmitter;
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.Single;
+import io.reactivex.SingleOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Cancellable;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
 
@@ -45,7 +58,6 @@ public class RecorderActivity extends AppCompatActivity {
     private boolean mBound = false;
 
     private AppDatabase db;
-
 
     private ServiceConnection mConnection = new ServiceConnection() {
 
@@ -82,6 +94,7 @@ public class RecorderActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
 
         getRecordings();
+
     }
 
     @Override
@@ -108,6 +121,7 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     private void getRecordings() {
+        Log.d(TAG, "MAIN: " + Thread.currentThread().getName());
         db.recordingDao()
                 .getAll()
                 .subscribeOn(Schedulers.io())
@@ -116,6 +130,15 @@ public class RecorderActivity extends AppCompatActivity {
                     Log.d(TAG, Arrays.asList(recordings).toString());
                     adapter.update(recordings);
                 });
+
+    }
+
+    /**
+     * Checks if recordings still exist
+     * Checks if recordings have all info
+     */
+    private void checkDatabase() {
+
     }
 
 }
