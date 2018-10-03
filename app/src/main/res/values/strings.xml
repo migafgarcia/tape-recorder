@@ -5,5 +5,4 @@
     <string name="status_recording">Recording…</string>
     <string name="status_stopped">Not Recording</string>
     <string name="context_text" translatable="false">Tape Recorder is now recording</string>
-
 </resources>

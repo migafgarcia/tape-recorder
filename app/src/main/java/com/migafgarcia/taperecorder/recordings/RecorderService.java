@@ -1,9 +1,8 @@
-package com.migafgarcia.taperecorder;
+package com.migafgarcia.taperecorder.recordings;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.arch.persistence.room.Room;
 import android.content.Intent;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
@@ -18,11 +17,19 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.migafgarcia.taperecorder.AppComponent;
+import com.migafgarcia.taperecorder.ContextModule;
+import com.migafgarcia.taperecorder.DaggerAppComponent;
+import com.migafgarcia.taperecorder.TapeRecorderApp;
+import com.migafgarcia.taperecorder.database.AppDatabase;
+import com.migafgarcia.taperecorder.R;
 import com.migafgarcia.taperecorder.models.Recording;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
+
+import javax.inject.Inject;
 
 import io.reactivex.Completable;
 import io.reactivex.CompletableObserver;
@@ -54,10 +61,10 @@ public class RecorderService extends Service {
     private MediaRecorder.OnInfoListener onInfoListener;
     private MediaRecorder.OnErrorListener onErrorListener;
 
-    private AppDatabase db;
+
+    AppDatabase db;
 
     private Recording currentRecording = null;
-
 
     @Override
     public void onCreate() {
@@ -103,7 +110,7 @@ public class RecorderService extends Service {
             }
         };
 
-        db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "tape-recorder-db").build();
+        db = ((TapeRecorderApp) getApplication()).appDatabase;
 
     }
 
@@ -133,7 +140,6 @@ public class RecorderService extends Service {
             notificationManager.createNotificationChannel(channel);
         }
     }
-
 
     private Recording generateRecording() {
         File trDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath(), "Tape Recorder");
@@ -180,24 +186,6 @@ public class RecorderService extends Service {
         currentRecording = null;
     }
 
-    public RecorderStatus getStatus() {
-        return currentStatus;
-    }
-
-    public void record() {
-        if (currentStatus == RecorderStatus.RECORDING) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
-    }
-
-    public class RecorderServiceBinder extends Binder {
-        RecorderService getService() {
-            return RecorderService.this;
-        }
-    }
-
     private void addRecording(@NonNull Recording recording) {
 
         Objects.requireNonNull(recording);
@@ -230,4 +218,21 @@ public class RecorderService extends Service {
         });
     }
 
+    public RecorderStatus getStatus() {
+        return currentStatus;
+    }
+
+    public void record() {
+        if (currentStatus == RecorderStatus.RECORDING) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
+
+    public class RecorderServiceBinder extends Binder {
+        RecorderService getService() {
+            return RecorderService.this;
+        }
+    }
 }

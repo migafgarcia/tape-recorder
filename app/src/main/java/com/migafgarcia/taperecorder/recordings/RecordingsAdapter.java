@@ -1,4 +1,4 @@
-package com.migafgarcia.taperecorder;
+package com.migafgarcia.taperecorder.recordings;
 
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.migafgarcia.taperecorder.R;
 import com.migafgarcia.taperecorder.models.Recording;
 
 import java.util.ArrayList;
@@ -15,6 +16,12 @@ import java.util.List;
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.RecordingViewHolder>{
 
     private ArrayList<Recording> recordings = new ArrayList<>();
+
+    private OnRecordingClickListener onRecordingClickListener;
+
+    public RecordingsAdapter(OnRecordingClickListener onRecordingClickListener) {
+        this.onRecordingClickListener = onRecordingClickListener;
+    }
 
     public void update(List<Recording> newRecordings) {
         recordings.clear();
@@ -35,9 +42,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Re
         Recording recording = recordings.get(position);
 
         holder.title.setText(recording.getTitle());
-        holder.duration.setText(Long.toString(recording.getDuration()) + " ms");
-        holder.size.setText(humanReadableByteCount(recording.getSize(), true));
-
+        holder.duration.setText(Long.toString(recording.getDuration()) + " ms"); // TODO: 14-09-2018 values are weird
+        holder.size.setText(humanReadableByteCount(recording.getSize(), false));
+        holder.play.setOnClickListener(v -> onRecordingClickListener.onClick(recording));
     }
 
     /**
@@ -71,5 +78,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Re
             this.duration = itemView.findViewById(R.id.duration_txtview);
             this.play = itemView.findViewById(R.id.play_btn);
         }
+    }
+
+    public interface OnRecordingClickListener {
+        void onClick(Recording recording);
     }
 }

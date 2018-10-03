@@ -1,41 +1,35 @@
-package com.migafgarcia.taperecorder;
+package com.migafgarcia.taperecorder.recordings;
 
-import android.arch.persistence.room.Room;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 
-import com.birbit.android.jobqueue.JobManager;
-import com.birbit.android.jobqueue.config.Configuration;
+import com.migafgarcia.taperecorder.R;
+import com.migafgarcia.taperecorder.TapeRecorderApp;
+import com.migafgarcia.taperecorder.database.AppDatabase;
 import com.migafgarcia.taperecorder.models.Recording;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import io.reactivex.FlowableEmitter;
-import io.reactivex.Observable;
-import io.reactivex.Observer;
-import io.reactivex.Single;
-import io.reactivex.SingleOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Cancellable;
-import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
@@ -50,6 +44,8 @@ public class RecorderActivity extends AppCompatActivity {
     @BindView(R.id.recordings_rv)
     RecyclerView recyclerView;
 
+    private AppDatabase db;
+
     private RecordingsAdapter adapter;
     private RecyclerView.LayoutManager layoutManager;
 
@@ -57,7 +53,8 @@ public class RecorderActivity extends AppCompatActivity {
     private RecorderService mService;
     private boolean mBound = false;
 
-    private AppDatabase db;
+    private MediaPlayer mediaPlayer;
+    private Recording currentlyPlaying;
 
     private ServiceConnection mConnection = new ServiceConnection() {
 
@@ -77,20 +74,43 @@ public class RecorderActivity extends AppCompatActivity {
     };
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_recorder);
         ButterKnife.bind(this);
 
-        db = Room.databaseBuilder(getApplicationContext(), AppDatabase.class, "tape-recorder-db").build();
+        Intent intent = new Intent(this, RecorderService.class);
+        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+
+        db = ((TapeRecorderApp) getApplication()).appDatabase;
 
         recyclerView.setHasFixedSize(true);
 
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
+        recyclerView.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
 
-        adapter = new RecordingsAdapter();
+        adapter = new RecordingsAdapter(recording -> {
+            if(recording == currentlyPlaying) {
+                if(mediaPlayer.isPlaying())
+                    mediaPlayer.pause();
+                else
+                    mediaPlayer.start();
+            }
+            else {
+                currentlyPlaying = recording;
+                mediaPlayer.reset();
+                try {
+                    mediaPlayer.setDataSource(recording.getPath());
+                    mediaPlayer.prepare();
+                    mediaPlayer.start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
         recyclerView.setAdapter(adapter);
 
         getRecordings();
@@ -98,10 +118,22 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(mConnection);
+    }
+
+    @Override
     protected void onStart() {
         super.onStart();
-        Intent intent = new Intent(this, RecorderService.class);
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        mediaPlayer = new MediaPlayer();
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mediaPlayer.release();
     }
 
     private void updateUI() {
@@ -122,22 +154,29 @@ public class RecorderActivity extends AppCompatActivity {
 
     private void getRecordings() {
         Log.d(TAG, "MAIN: " + Thread.currentThread().getName());
-        db.recordingDao()
-                .getAll()
+        Disposable disposable = db.recordingDao()
+                .getAllFlowable()
+                .map(new Function<List<Recording>, List<Recording>>() {
+                    @Override
+                    public List<Recording> apply(List<Recording> recordings) throws Exception {
+
+                        ArrayList<Recording> result = new ArrayList<>(recordings);
+
+                        for (Recording recording : recordings) {
+                            File file = new File(recording.getPath());
+                            if(!file.exists())
+                                result.remove(recording);
+
+                        }
+                        return result;
+                    }
+                })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(recordings -> {
                     Log.d(TAG, Arrays.asList(recordings).toString());
                     adapter.update(recordings);
                 });
-
-    }
-
-    /**
-     * Checks if recordings still exist
-     * Checks if recordings have all info
-     */
-    private void checkDatabase() {
 
     }
 
