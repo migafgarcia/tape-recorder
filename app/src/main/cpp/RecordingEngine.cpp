@@ -4,9 +4,16 @@
 
 #include "RecordingEngine.h"
 #include "../../../../oboe/src/common/OboeDebug.h"
+#include <unistd.h>
+#include <sys/socket.h>
+#include <linux/in.h>
+#include <netinet/in.h>
+#include <endian.h>
+#include <arpa/inet.h>
 
 
 RecordingEngine::RecordingEngine() {
+
 
 }
 
@@ -19,26 +26,45 @@ void RecordingEngine::setDeviceId(int32_t deviceId) {
 }
 
 void RecordingEngine::startRecording() {
-    // To create a stream we use a stream builder. This allows us to specify all
-    // the parameters for the stream prior to opening it
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if(sockfd == 0) {
+        LOGE("Socket creation failed");
+        return;
+    }
+
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_port = htons(6666);
+
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if(inet_pton(AF_INET, "192.168.1.110", &address.sin_addr)<=0)
+    {
+        LOGE("Invalid address/ Address not supported ");
+        return;
+    }
+
+    if (connect(sockfd, (struct sockaddr *)&address, sizeof(address)) < 0)
+    {
+        LOGE("\nConnection Failed \n");
+        return ;
+    }
+
     oboe::AudioStreamBuilder builder;
 
     builder.setCallback(this)
             ->setDeviceId(mRecordingDeviceId)
             ->setDirection(oboe::Direction::Input)
-            ->setSampleRate(mSampleRate)
             ->setChannelCount(mInputChannelCount)
-            ->setAudioApi(mAudioApi)
             ->setFormat(mFormat)
+            ->setSampleRate(sample_rate)
+            ->setContentType(oboe::ContentType::Speech)
             ->setSharingMode(oboe::SharingMode::Exclusive)
             ->setPerformanceMode(oboe::PerformanceMode::LowLatency);
 
-    // Now that the parameters are set up we can open the stream
     oboe::Result result = builder.openStream(&recording_stream);
     if (result == oboe::Result::OK && recording_stream) {
-        assert(recording_stream->getChannelCount() == mInputChannelCount);
-//        assert(recording_stream->getSampleRate() == mSampleRate);
-//        assert(recording_stream->getFormat() == mFormat);
 
         warnIfNotLowLatency(recording_stream);
     } else {
@@ -62,6 +88,12 @@ void RecordingEngine::stopRecording() {
 oboe::DataCallbackResult
 RecordingEngine::onAudioReady(oboe::AudioStream *oboeStream, void *audioData, int32_t numFrames) {
     LOGD("Read: %d", numFrames);
+
+    //TODO(migafgarcia): remove this from here
+    if(send(sockfd, audioData, static_cast<size_t>(oboeStream->getBytesPerFrame() * numFrames), 0) == -1) {
+        LOGE("Error sending data, closing stream");
+        //TODO(migafgarcia): close stream
+    }
     return oboe::DataCallbackResult::Continue;
 }
 
@@ -78,14 +110,11 @@ bool RecordingEngine::setAudioApi(oboe::AudioApi) {
 }
 
 bool RecordingEngine::isAAudioSupported(void) {
-    return false;
+    oboe::AudioStreamBuilder builder;
+    return builder.isAAudioSupported();
 }
 
-/**
- * Warn in logcat if non-low latency stream is created
- * @param stream: newly created stream
- *
- */
+
 void RecordingEngine::warnIfNotLowLatency(oboe::AudioStream *stream) {
     if (stream->getPerformanceMode() != oboe::PerformanceMode::LowLatency) {
         LOGW(
@@ -93,3 +122,5 @@ void RecordingEngine::warnIfNotLowLatency(oboe::AudioStream *stream) {
                 "Check your requested format, sample rate and channel count");
     }
 }
+
+
